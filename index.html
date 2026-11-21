@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Carte des districts</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#141714; --panel:rgba(22,24,21,.92); --panel-solid:#171a17; --line:rgba(255,255,255,.09);
+  --text:#ece6d6; --muted:#a39d8c; --accent:#d8ff3c; --gold:#ffd36a;
+  --t1:#c9b48a; --t2:#f0a33c; --t3:#ff6a3d;
+  --font-ui:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif; --font-title:'Oswald','Arial Narrow',sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:var(--font-ui);font-size:14px}
+#map{position:absolute;inset:0;background:#1b1f1c}
+#map::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:500;
+  background:radial-gradient(ellipse at center,rgba(0,0,0,0) 55%,rgba(0,0,0,.45) 100%)}
+.leaflet-container{font-family:var(--font-ui);background:#1b1f1c}
+
+/* header */
+#brand{position:absolute;top:14px;left:424px;z-index:900;pointer-events:none;transition:left .25s}
+body.panel-closed #brand{left:62px}
+#brand .state{font-family:var(--font-title);font-weight:600;font-style:normal;font-size:20px;letter-spacing:.02em;transform:skewX(-9deg);display:inline-block;text-shadow:0 2px 8px rgba(0,0,0,.7)}
+#brand .state b{color:var(--accent);font-weight:600}
+#brand h1{margin:0;font-family:var(--font-title);font-weight:700;font-size:46px;line-height:.95;letter-spacing:.01em;transform:skewX(-9deg);text-shadow:0 3px 14px rgba(0,0,0,.75)}
+
+/* panel */
+#panel{position:absolute;top:0;left:0;bottom:0;width:360px;z-index:1000;background:var(--panel);backdrop-filter:blur(10px);
+  border-right:1px solid var(--line);display:flex;flex-direction:column;transition:transform .25s}
+body.panel-closed #panel{transform:translateX(-100%)}
+#toggle{position:absolute;top:14px;left:372px;z-index:1001;width:36px;height:36px;border-radius:8px;border:1px solid var(--line);
+  background:var(--panel-solid);color:var(--text);cursor:pointer;font-size:18px;display:none}
+body.panel-closed #toggle{left:12px}
+.p-head{padding:16px 16px 10px;border-bottom:1px solid var(--line)}
+.p-head .row{display:flex;gap:8px;align-items:center}
+.p-head input{flex:1;min-width:0;background:#0f110f;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:9px 11px;font:inherit}
+.p-head input:focus{outline:none;border-color:rgba(216,255,60,.5)}
+.p-head .hint{color:var(--muted);font-size:12px;margin-top:6px}
+.icon-btn{background:#0f110f;border:1px solid var(--line);color:var(--text);border-radius:8px;width:36px;height:36px;cursor:pointer;font-size:16px;flex:none}
+.p-body{flex:1;overflow:auto;padding:6px 0 16px}
+.sec{padding:10px 16px}
+.sec h3{margin:0 0 8px;font-family:var(--font-title);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.dl{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.dl button{display:flex;align-items:center;gap:8px;text-align:left;background:rgba(255,255,255,.035);border:1px solid var(--line);color:var(--text);
+  border-radius:8px;padding:7px 9px;cursor:pointer;font:inherit;font-size:13px}
+.dl button:hover{background:rgba(255,255,255,.08)}
+.dl button.on{border-color:var(--gold);background:rgba(255,211,106,.1)}
+.tier{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:5px;font-family:var(--font-title);font-weight:700;font-size:12px;color:#1b1b16;flex:none}
+.tier.t1{background:var(--t1)}.tier.t2{background:var(--t2)}.tier.t3{background:var(--t3)}
+
+/* card */
+#card{margin:8px 16px 4px;border:1px solid var(--line);border-radius:12px;background:rgba(0,0,0,.25);padding:14px;display:none}
+#card.show{display:block}
+#card .kicker{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;gap:8px;align-items:center}
+#card h2{margin:4px 0 6px;font-family:var(--font-title);font-weight:700;font-size:26px;line-height:1.05;transform:skewX(-6deg);transform-origin:left}
+#card p{margin:6px 0;color:#d3ccba;line-height:1.45}
+#card .muted{color:var(--muted);font-size:12.5px}
+#card .close{float:right;background:none;border:0;color:var(--muted);font-size:18px;cursor:pointer;margin:-6px -6px 0 0}
+.blist{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+.blist li{display:flex;gap:10px;align-items:flex-start;padding:8px;border-radius:8px;background:rgba(255,255,255,.035);cursor:pointer}
+.blist li:hover{background:rgba(255,255,255,.08)}
+.bico{width:30px;height:30px;flex:none;border-radius:7px;background:#2a2a24;display:flex;align-items:center;justify-content:center}
+.bico img{max-width:20px;max-height:20px}
+.blist b{display:block;font-weight:600}
+.blist span{display:block;color:var(--muted);font-size:12.5px;line-height:1.35}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.chip{font-size:11.5px;padding:2px 6px;border-radius:5px;background:rgba(255,211,106,.12);color:var(--gold);cursor:pointer;border:0;font-family:inherit}
+.chip:hover{background:rgba(255,211,106,.25)}
+.link{color:var(--accent);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+
+/* toggles + legend */
+.tg{display:flex;flex-direction:column;gap:6px}
+.tg label{display:flex;gap:9px;align-items:center;cursor:pointer;color:#d3ccba}
+.tg input{accent-color:#c7e83a;width:15px;height:15px}
+.legend{display:flex;flex-direction:column;gap:4px}
+.legend button{display:flex;gap:10px;align-items:center;background:none;border:1px solid transparent;color:var(--text);padding:5px 6px;border-radius:8px;cursor:pointer;text-align:left;font:inherit}
+.legend button:hover{background:rgba(255,255,255,.05)}
+.legend button.on{border-color:var(--gold);background:rgba(255,211,106,.08)}
+.legend .bico{width:26px;height:26px}.legend .bico img{max-width:17px;max-height:17px}
+.legend small{display:block;color:var(--muted);font-size:12px}
+.legend .n{margin-left:auto;color:var(--muted);font-size:12px}
+.foot{padding:8px 16px 0;color:var(--muted);font-size:11.5px;line-height:1.45}
+
+/* map markers */
+.dlabel{pointer-events:auto;cursor:pointer;text-align:center;white-space:nowrap;transform:translate(-50%,-50%);position:absolute;left:0;top:0}
+.dlabel .nm{font-family:var(--font-title);font-weight:700;font-size:19px;letter-spacing:.02em;text-transform:uppercase;color:#fff;
+  transform:skewX(-9deg);display:inline-block;text-shadow:0 1px 3px rgba(0,0,0,.85),0 0 10px rgba(0,0,0,.5)}
+.dlabel .tr{font-family:var(--font-title);font-weight:500;font-size:9.5px;letter-spacing:.06em;color:rgba(255,255,255,.82);text-shadow:0 1px 2px rgba(0,0,0,.9);margin-top:-2px;transform:skewX(-9deg)}
+.dlabel .tr i{display:inline-block;width:7px;height:7px;border-radius:2px;margin-right:4px;vertical-align:0}
+.z-far .dlabel .nm{font-size:14px}.z-far .dlabel .tr{display:none}
+.z-vfar .dlabel .nm{font-size:11.5px}.z-vfar .bmk{display:none}
+.z-vfar .loc .dia{width:28px;height:28px;border-radius:5px}.z-vfar .loc .dia svg{width:17px;height:17px}.z-vfar .loc .lnm{font-size:11px;margin-top:6px}
+/* no transition on .bmk itself: Leaflet moves markers with transform, a transition makes them lag during camera moves */
+.bmk{display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 1px 2px rgba(0,0,0,.9))}
+.bmk img{max-width:100%;max-height:100%;opacity:.95;transition:transform .15s}
+.bmk:hover img{transform:scale(1.25)}
+.bmk.dim{opacity:.18}
+.bmk.hl img{filter:drop-shadow(0 0 4px rgba(255,211,106,1))}
+.num{font-family:var(--font-title);font-weight:500;color:rgba(255,246,220,.72);text-shadow:0 1px 2px rgba(0,0,0,.8);text-align:center;pointer-events:none;
+  transform:translate(-50%,-50%);position:absolute;left:0;top:0;white-space:nowrap}
+.z-lt2 .num{display:none}
+.loc{position:absolute;left:0;top:0;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;cursor:pointer}
+.loc .dia{width:40px;height:40px;transform:rotate(45deg);border-radius:7px;background:linear-gradient(135deg,#f6ecd2,#bfae86);border:2px solid #fff;
+  box-shadow:0 2px 10px rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center}
+.loc .dia svg{transform:rotate(-45deg);width:24px;height:24px}
+.loc .lnm{margin-top:9px;font-family:var(--font-title);font-weight:700;font-size:14px;text-transform:uppercase;color:#fff;transform:skewX(-9deg);
+  text-shadow:0 1px 3px rgba(0,0,0,.9);white-space:nowrap}
+.leaflet-tooltip.tt{background:rgba(18,20,17,.94);color:var(--text);border:1px solid rgba(255,255,255,.12);border-radius:8px;box-shadow:0 4px 18px rgba(0,0,0,.5);font-family:var(--font-ui);font-size:12.5px;padding:6px 9px}
+.leaflet-tooltip.tt::before{display:none}
+.tt b{display:block;font-size:13px}
+.tt span{color:var(--muted)}
+path.pulse{animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{stroke-opacity:1;fill-opacity:.35}50%{stroke-opacity:.35;fill-opacity:.08}}
+.leaflet-control-zoom a{background:var(--panel-solid)!important;color:var(--text)!important;border-color:var(--line)!important}
+.leaflet-control-attribution{background:rgba(0,0,0,.45)!important;color:#aaa!important;font-size:10.5px}
+.leaflet-control-attribution a{color:#ccc!important}
+
+@media (max-width:760px){
+  #panel{top:auto;width:100%;height:46vh;border-right:0;border-top:1px solid var(--line);border-radius:14px 14px 0 0}
+  body.panel-closed #panel{transform:translateY(100%)}
+  #toggle{display:block;left:auto!important;right:12px;top:12px}
+  #brand,body.panel-closed #brand{left:16px;top:12px}
+  #brand h1{font-size:32px}#brand .state{font-size:15px}
+  .leaflet-bottom.leaflet-right{bottom:46vh}
+  body.panel-closed .leaflet-bottom.leaflet-right{bottom:0}
+}
+@media (min-width:761px){#toggle{display:block}}
+</style>
+</head>
+<body>
+<div id="map" class="z-lt2"></div>
+<div id="brand"><span class="state">CARTE <b>INTERACTIVE</b></span><h1>LES DISTRICTS</h1></div>
+<button id="toggle" class="icon-btn" title="Afficher / masquer le panneau" aria-label="Afficher ou masquer le panneau">☰</button>
+
+<aside id="panel">
+  <div class="p-head">
+    <div class="row">
+      <input id="q" type="search" placeholder="District ou parcelle (ex. « Fallrock 12 »)" autocomplete="off" aria-label="Rechercher">
+      <button class="icon-btn" id="reset" title="Vue d'ensemble" aria-label="Vue d'ensemble">⌂</button>
+    </div>
+    <div class="hint" id="qhint">Entrée pour y aller · clic sur une case pour ses voisins</div>
+  </div>
+  <div class="p-body">
+    <div id="card"></div>
+    <div class="sec"><h3>Districts</h3><div class="dl" id="dlist"></div></div>
+    <div class="sec"><h3>Affichage</h3>
+      <div class="tg">
+        <label><input type="checkbox" id="l-cells" checked> Parcelles et numéros <span class="muted" style="color:var(--muted);font-size:12px">(en zoomant)</span></label>
+        <label><input type="checkbox" id="l-bld" checked> Bâtiments spéciaux</label>
+        <label><input type="checkbox" id="l-roads" checked> Liaisons entre districts</label>
+        <label><input type="checkbox" id="l-locs" checked> Lieux (motel, prison, ville)</label>
+      </div>
+    </div>
+    <div class="sec"><h3>Bâtiments spéciaux <span style="text-transform:none;letter-spacing:0;font-family:var(--font-ui);font-weight:400">· clic pour les repérer</span></h3><div class="legend" id="legend"></div></div>
+    <div class="foot">
+      Fond de carte, districts, parcelles, liaisons et emplacements de bâtiments extraits des fichiers du client (texture <code>GlobalMap</code> 8192², prefab <code>Runtime_RealmGrid_v0</code>) ; types de bâtiments relevés en jeu. Identiques sur tous les serveurs.
+      Les valeurs chiffrées des bonus sont envoyées par le serveur et absentes des fichiers : elles viennent de <a href="https://robrun.info/en/guides/settlement-bonuses" target="_blank" rel="noopener" style="color:var(--accent)">robrun.info</a> (non vérifiées en jeu, peuvent changer avec les mises à jour).
+    </div>
+  </div>
+</aside>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="data.js"></script>
+<script>
+(function(){
+if (window.matchMedia('(max-width:760px)').matches) document.body.classList.add('panel-closed');
+const D = window.MAP_DATA, N = D.size, H = D.hex, S = D.strings;
+// Numeric values are server-side (the client only has "{0}%" placeholders) — taken from robrun.info's settlement-bonus guide
+const BONUS = {
+  weapon_discount_1: '−15 % sur toutes les armes chez les vendeurs',
+  equipment_discount_1: '−10 % sur tout l\'équipement chez les vendeurs',
+  defense_points: '+3 points de défense pour la maison, les dépendances et la clôture de la base',
+  lab_1: 'Cycle de cuisson complet 20 % plus rapide',
+  farm_1: '+50 % de chance de récolte supplémentaire sur un bac de culture',
+  block_station: 'Pas de valeur chiffrée : la colonie a une autre carte, entourée par un poste de contrôle',
+  improved_alcohol_cargo_exchange: 'Reconditionner la cargaison de contrebande à l\'établi rapporte plus (pourcentage non publié)'
+};
+const SALE_BONUS = {1: '+10 %', 2: '+20 %', 3: '+30 %'};
+Object.entries(D.btypes).forEach(([id, t]) => { if (BONUS[id]) t.bonus = BONUS[id]; });
+const TIER_COL = {1:getCss('--t1'),2:getCss('--t2'),3:getCss('--t3')};
+function getCss(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const norm = s => s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+
+/* ---------- geometry ---------- */
+const R = H.dx / Math.sqrt(3) * H.unit;            // hex circumradius in px
+function hexCenter(q, r){
+  const X = H.dx * (q + 0.5 * (r & 1)), Z = -H.dz * r;
+  return [(0.5 + (X - H.ox) / 100) * N, (0.5 - (Z - H.oz) / 100) * N];
+}
+function hexVerts(q, r, s = 1){
+  const [cx, cy] = hexCenter(q, r);
+  return [0,1,2,3,4,5].map(k => { const a = (-90 + 60 * k) * Math.PI / 180; return [cx + R * s * Math.cos(a), cy + R * s * Math.sin(a)]; });
+}
+// neighbours ordered like edges v0→v1 (NE), E, SE, SW, W, NW — odd-r offset layout
+function nbrs(q, r){
+  return (r & 1)
+    ? [[q+1,r-1],[q+1,r],[q+1,r+1],[q,r+1],[q-1,r],[q,r-1]]
+    : [[q,r-1],[q+1,r],[q,r+1],[q-1,r+1],[q-1,r],[q-1,r-1]];
+}
+const key = (q, r) => q + ',' + r;
+const P = (x, y) => L.latLng(-y / 8, x / 8);       // texture px (zoom 3) -> latlng
+const PP = pts => pts.map(p => P(p[0], p[1]));
+function outline(cells){                             // union boundary of a hex set → rings
+  const set = new Set(cells.map(c => key(c[0], c[1])));
+  const vk = p => Math.round(p[0] * 2) + ':' + Math.round(p[1] * 2);
+  const edges = new Map();
+  for (const [q, r] of cells){
+    const v = hexVerts(q, r), nb = nbrs(q, r);
+    for (let k = 0; k < 6; k++){
+      if (set.has(key(nb[k][0], nb[k][1]))) continue;
+      const a = v[k], b = v[(k + 1) % 6];
+      edges.set(vk(a), {a, b, used:false});
+    }
+  }
+  const rings = [];
+  for (const e of edges.values()){
+    if (e.used) continue;
+    const ring = []; let cur = e;
+    while (cur && !cur.used){ cur.used = true; ring.push(cur.a); cur = edges.get(vk(cur.b)); }
+    if (ring.length > 2) rings.push(ring);
+  }
+  return rings;
+}
+
+/* ---------- indexes ---------- */
+const settle = new Map();      // "q,r" -> {sector, n}
+const bldAt = new Map();       // "q,r" -> building
+const buildings = [];
+D.sectors.forEach(s => {
+  s.cells.forEach(([q, r, n]) => settle.set(key(q, r), {s, n, q, r}));
+  s.buildings.forEach((b, i) => { const o = {...b, s, i, t: D.btypes[b.type]}; buildings.push(o); bldAt.set(key(b.qr[0], b.qr[1]), o); });
+});
+buildings.forEach(b => {
+  b.adj = nbrs(b.qr[0], b.qr[1]).map(([q, r]) => settle.get(key(q, r))).filter(Boolean).sort((a, c) => a.n - c.n);
+});
+const links = {};
+D.roads.forEach(r => { (links[r.from] ||= []).push(r.to); (links[r.to] ||= []).push(r.from); });
+const byId = id => D.sectors.find(s => s.id === id);
+
+/* ---------- map ---------- */
+const bounds = L.latLngBounds(P(0, N), P(N, 0));
+const map = L.map('map', {crs: L.CRS.Simple, minZoom: -1.5, maxZoom: 5, zoomSnap: 0.25, zoomDelta: 0.5, wheelPxPerZoomLevel: 90,
+  maxBounds: bounds.pad(0.08), maxBoundsViscosity: 0.8, zoomControl: false, attributionControl: true});
+L.control.zoom({position: 'bottomright'}).addTo(map);
+map.attributionControl.setPrefix('').addAttribution('Données et visuels : ROB RUN © Kefir — carte de fan non officielle');
+L.tileLayer('tiles/{z}/{x}_{y}.webp', {tileSize: 1024, minZoom: -3, maxZoom: 6, minNativeZoom: 0, maxNativeZoom: 3, noWrap: true, bounds, keepBuffer: 2}).addTo(map);
+
+['cells','nums','roads','blds','labels'].forEach((n, i) => { map.createPane(n).style.zIndex = [410, 450, 420, 610, 640][i]; });
+map.getPane('nums').style.pointerEvents = 'none';
+map.getPane('roads').style.pointerEvents = 'none';
+
+const districtBounds = L.latLngBounds(P(2350, 2900), P(6250, 5700));
+function pad(extra = 20){                           // keep framed content clear of the side panel / bottom sheet
+  const closed = document.body.classList.contains('panel-closed'), mobile = window.matchMedia('(max-width:760px)').matches;
+  const panel = document.getElementById('panel');
+  return {paddingTopLeft: [(!closed && !mobile ? panel.offsetWidth : 0) + extra, extra + (mobile ? 50 : 70)],
+          paddingBottomRight: [extra, extra + (!closed && mobile ? panel.offsetHeight : 0)]};
+}
+function initialView(){ map.fitBounds(districtBounds, pad()); }
+function flyCentered(latlng, zoom){                  // centre the point in the part of the map not covered by the panel
+  const p = pad(0), dx = (p.paddingTopLeft[0] - p.paddingBottomRight[0]) / 2, dy = (p.paddingTopLeft[1] - p.paddingBottomRight[1]) / 2;
+  const c = map.unproject(map.project(latlng, zoom).subtract([dx, dy]), zoom);
+  map.flyTo(c, zoom, {duration: .6});
+}
+if (map.getSize().x > 0 && map.getSize().y > 0) initialView(); else { map.setView(districtBounds.getCenter(), 1); map.once('resize', initialView); }
+
+/* districts */
+const districtLayer = L.layerGroup().addTo(map);
+const dPoly = {};
+D.sectors.forEach(s => {
+  const all = [...s.cells.map(c => [c[0], c[1]]), ...s.center, ...s.buildings.map(b => b.qr)];
+  const rings = outline(all).map(PP);
+  const poly = L.polygon(rings, {color: '#2a1d10', weight: 2, opacity: .85, fillColor: '#3a2814', fillOpacity: .13, smoothFactor: 0})
+    .on('mouseover', () => { if (sel.sector !== s.id) poly.setStyle({fillOpacity: .22, color: '#fff3d6', opacity: .7}); })
+    .on('mouseout', () => styleDistrict(s.id))
+    .on('click', () => selectDistrict(s.id));
+  poly.addTo(districtLayer); dPoly[s.id] = poly; s._bounds = poly.getBounds();
+});
+function styleDistrict(id){
+  const on = sel.sector === id;
+  dPoly[id].setStyle(on ? {color: getCss('--gold'), weight: 3, opacity: 1, fillOpacity: .08, fillColor: '#5a3d18'}
+                        : {color: '#2a1d10', weight: 2, opacity: .85, fillOpacity: .13, fillColor: '#3a2814'});
+}
+
+/* cells + numbers */
+const cellLayer = L.layerGroup(), numLayer = L.layerGroup();
+const cellPoly = new Map();
+D.sectors.forEach(s => {
+  s.cells.forEach(([q, r, n]) => {
+    const p = L.polygon(PP(hexVerts(q, r, .985)), {pane: 'cells', color: '#fff6dc', weight: 1, opacity: .22, fillOpacity: 0, fillColor: '#ffd36a'})
+      .on('mouseover', e => { if (!p._hl) p.setStyle({fillOpacity: .18, opacity: .6}); })
+      .on('mouseout', e => { if (!p._hl) p.setStyle({fillOpacity: 0, opacity: .22}); })
+      .on('click', () => selectParcel(s.id, n));
+    p.bindTooltip(`<b>${esc(s.name)} n°&nbsp;${n}</b><span>Parcelle · district niv.&nbsp;${s.tier}</span>`, {className: 'tt', direction: 'top', offset: [0, -6], sticky: false});
+    p.addTo(cellLayer); cellPoly.set(key(q, r), p);
+    const [cx, cy] = hexCenter(q, r);
+    L.marker(P(cx, cy), {pane: 'nums', interactive: false, icon: L.divIcon({className: '', html: `<div class="num">${n}</div>`, iconSize: [0, 0]})}).addTo(numLayer);
+  });
+  s.center.forEach(([q, r]) => {
+    L.polygon(PP(hexVerts(q, r, .985)), {pane: 'cells', color: '#d8ff3c', weight: 1, opacity: .35, dashArray: '3 4', fillColor: '#000', fillOpacity: .12})
+      .bindTooltip(`<b>${esc(S.global_map_city_sector_center)} de ${esc(s.name)}</b><span>${esc(S.global_map_city_sector_center_description)}</span>`, {className: 'tt', direction: 'top'})
+      .on('click', () => selectDistrict(s.id)).addTo(cellLayer);
+  });
+});
+
+/* roads */
+const roadLayer = L.layerGroup().addTo(map);
+D.roads.forEach(r => L.polyline(PP(r.pts), {pane: 'roads', color: '#fff', weight: 1.6, opacity: .55, interactive: false}).addTo(roadLayer));
+
+/* building markers */
+const bldLayer = L.layerGroup().addTo(map);
+let adjLayer = L.layerGroup().addTo(map);
+buildings.forEach(b => {
+  const [cx, cy] = hexCenter(b.qr[0], b.qr[1]);
+  const m = L.marker(P(cx, cy), {pane: 'blds', icon: L.divIcon({className: 'bmk', html: `<img src="${b.t.icon}" alt="">`, iconSize: [22, 22]})});
+  m.bindTooltip(`<b>${esc(b.t.name)}</b><span>${esc(b.t.bonus)}</span><br><span>Parcelles voisines (bonus) : ${b.adj.map(a => a.n).join(', ') || '—'}</span>`, {className: 'tt', direction: 'top', offset: [0, -10]});
+  m.on('mouseover', () => showAdj(b, true)).on('mouseout', () => showAdj(sel.building, false)).on('click', () => selectBuilding(b));
+  m.addTo(bldLayer); b.marker = m;
+});
+function showAdj(b, temp){
+  adjLayer.clearLayers();
+  if (!b) { if (sel.parcel) markParcel(sel.parcel); return; }
+  b.adj.forEach(a => L.polygon(PP(hexVerts(a.q, a.r, .9)), {color: getCss('--gold'), weight: 2, fillColor: getCss('--gold'), fillOpacity: .22, interactive: false}).addTo(adjLayer));
+  L.polygon(PP(hexVerts(b.qr[0], b.qr[1], .9)), {color: '#fff', weight: 2, fillOpacity: 0, dashArray: '4 4', interactive: false}).addTo(adjLayer);
+}
+function setIconSize(){
+  const z = map.getZoom(), px = Math.round(Math.max(14, Math.min(40, 12 * Math.pow(2, (z - 0.4) * .55))));
+  buildings.forEach(b => { const el = b.marker.getElement(); if (el){ el.style.width = el.style.height = px + 'px'; el.style.marginLeft = el.style.marginTop = (-px / 2) + 'px'; } });
+  const fs = Math.max(9, Math.min(22, 4.2 * Math.pow(2, z - 0.6)));
+  document.querySelectorAll('.num').forEach(el => el.style.fontSize = fs + 'px');
+}
+
+/* district labels */
+const labelLayer = L.layerGroup().addTo(map);
+D.sectors.forEach(s => {
+  const html = `<div class="dlabel"><div class="nm">${esc(s.name)}</div><div class="tr"><i style="background:${TIER_COL[s.tier]}"></i>${esc(S['settlement_tier_' + s.tier + '_title'] || ('DISTRICT DE NIVEAU ' + s.tier))}</div></div>`;
+  L.marker(P(s.label[0], s.label[1]), {pane: 'labels', icon: L.divIcon({className: '', html, iconSize: [0, 0]})})
+    .on('click', () => selectDistrict(s.id)).addTo(labelLayer);
+});
+
+/* locations */
+const LOC_SVG = {
+  hub: '<svg viewBox="0 0 24 24" fill="#3b2a18"><path d="M3 21V10l9-6 9 6v11h-6v-6H9v6z"/><rect x="10" y="9" width="4" height="3" fill="#c0392b"/></svg>',
+  prison: '<svg viewBox="0 0 24 24" fill="#3b2a18"><path d="M8 2h8l1 4h-2v15H9V6H7z"/><rect x="10" y="9" width="1.4" height="9" fill="#e8dcc0"/><rect x="12.6" y="9" width="1.4" height="9" fill="#e8dcc0"/></svg>',
+  city: '<svg viewBox="0 0 24 24" fill="#3b2a18"><path d="M2 21V11h4V6h5v5h2V3h6v18z"/><circle cx="19.5" cy="15.5" r="0" /></svg>'
+};
+const locLayer = L.layerGroup().addTo(map);
+D.locations.forEach(l => {
+  L.polygon(outline(l.cells).map(PP), {color: '#f6ecd2', weight: 1.5, opacity: .6, fillColor: '#f6ecd2', fillOpacity: .08, dashArray: '5 5'})
+    .on('click', () => selectLocation(l)).addTo(locLayer);
+  L.marker(P(l.p[0], l.p[1] - 70), {pane: 'labels', icon: L.divIcon({className: '', html: `<div class="loc"><div class="dia">${LOC_SVG[l.id] || ''}</div><div class="lnm">${esc(l.name)}</div></div>`, iconSize: [0, 0]})})
+    .on('click', () => selectLocation(l)).addTo(locLayer);
+});
+
+/* ---------- panel ---------- */
+const card = document.getElementById('card');
+const sel = {sector: null, parcel: null, building: null};
+let ownHash = '';
+let parcelLayer = L.layerGroup().addTo(map);
+
+function setHash(h){ ownHash = h; location.hash = h; }
+function tierBadge(t){ return `<span class="tier t${t}">${t}</span>`; }
+function bItem(b){
+  return `<li data-b="${buildings.indexOf(b)}"><div class="bico"><img src="${b.t.icon}" alt=""></div><div><b>${esc(b.t.name)}</b><span>${esc(b.t.bonus)}</span>
+    <div class="chips">${b.adj.map(a => `<button class="chip" data-p="${a.s.id}:${a.n}">n° ${a.n}</button>`).join('') || '<span>aucune parcelle voisine</span>'}</div></div></li>`;
+}
+function wireCard(){
+  card.querySelectorAll('[data-b]').forEach(el => el.addEventListener('click', e => { if (e.target.closest('.chip')) return; selectBuilding(buildings[+el.dataset.b]); }));
+  card.querySelectorAll('[data-p]').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); const [s, n] = el.dataset.p.split(':').map(Number); selectParcel(s, n); }));
+  card.querySelectorAll('[data-s]').forEach(el => el.addEventListener('click', () => selectDistrict(+el.dataset.s)));
+  const c = card.querySelector('.close'); if (c) c.addEventListener('click', clearSel);
+}
+function show(html){ card.innerHTML = '<button class="close" aria-label="Fermer">×</button>' + html; card.classList.add('show'); wireCard(); card.scrollIntoView({block: 'nearest'}); openPanel(); }
+function clearSel(){
+  const prev = sel.sector; Object.assign(sel, {sector: null, parcel: null, building: null});
+  if (prev !== null) styleDistrict(prev);
+  parcelLayer.clearLayers(); adjLayer.clearLayers(); card.classList.remove('show');
+  document.querySelectorAll('#dlist button').forEach(b => b.classList.remove('on'));
+  history.replaceState(null, '', location.pathname + location.search);
+}
+function setSector(id){
+  const prev = sel.sector; sel.sector = id;
+  if (prev !== null && prev !== id) styleDistrict(prev);
+  if (id !== null) styleDistrict(id);
+  document.querySelectorAll('#dlist button').forEach(b => b.classList.toggle('on', +b.dataset.s === id));
+}
+function selectDistrict(id, fly = true){
+  const s = byId(id); sel.parcel = null; sel.building = null; parcelLayer.clearLayers(); adjLayer.clearLayers();
+  setSector(id);
+  if (fly) map.flyToBounds(s._bounds, {...pad(40), maxZoom: 2.25, duration: .6});
+  const bl = buildings.filter(b => b.s === s);
+  const tdesc = S['realm_info_tier_' + s.tier + '_description'];
+  show(`<div class="kicker">${tierBadge(s.tier)} ${esc(S['settlement_tier_' + s.tier + '_title'] || '')}</div>
+    <h2>${esc(s.name)}</h2>
+    ${tdesc ? `<p>${esc(tdesc)}.</p>` : ''}
+    <p class="muted">${s.cells.length} parcelles résidentielles · ${esc(S.global_map_city_sector_center)} (centre de vente) : ${esc(S.global_map_city_sector_center_description)} Bonus de vente : <b style="color:var(--gold)">${SALE_BONUS[s.tier]}</b>.</p>
+    <p class="muted">Relié à : ${(links[id] || []).map(o => `<span class="link" data-s="${o}">${esc(byId(o).name)}</span>`).join(', ')}</p>
+    <div class="sec" style="padding:8px 0 0"><h3>Bâtiments spéciaux (${bl.length})</h3><ul class="blist">${bl.map(bItem).join('')}</ul></div>`);
+  setHash(encodeURIComponent(norm(s.name).replace(/\s+/g, '-')));
+}
+function markParcel(p){
+  parcelLayer.clearLayers();
+  L.polygon(PP(hexVerts(p.q, p.r, .95)), {color: getCss('--gold'), weight: 3, fillColor: getCss('--gold'), fillOpacity: .3, className: 'pulse', interactive: false}).addTo(parcelLayer);
+}
+function selectParcel(sid, n){
+  const s = byId(sid), c = s.cells.find(c => c[2] === n); if (!c) return;
+  const p = settle.get(key(c[0], c[1])); sel.parcel = p; sel.building = null; adjLayer.clearLayers();
+  setSector(sid); markParcel(p);
+  const [cx, cy] = hexCenter(p.q, p.r);
+  flyCentered(P(cx, cy), Math.max(map.getZoom(), 3));
+  const adjB = nbrs(p.q, p.r).map(([q, r]) => bldAt.get(key(q, r))).filter(Boolean);
+  const adjN = nbrs(p.q, p.r).map(([q, r]) => settle.get(key(q, r))).filter(Boolean).sort((a, b) => a.n - b.n);
+  show(`<div class="kicker">${tierBadge(s.tier)} Parcelle résidentielle</div>
+    <h2>${esc(s.name)} n°&nbsp;${n}</h2>
+    <p class="muted">${esc(S.global_map_city_settlement_description)}</p>
+    <div class="sec" style="padding:8px 0 0"><h3>Bâtiments adjacents (${adjB.length})</h3>
+      ${adjB.length ? `<p class="muted">Cette parcelle profite ${adjB.length > 1 ? 'des bonus de ces bâtiments' : 'du bonus de ce bâtiment'} :</p><ul class="blist">${adjB.map(bItem).join('')}</ul>` : '<p class="muted">Aucun bâtiment spécial à côté : pas de bonus de voisinage.</p>'}</div>
+    <p class="muted">Voisines : ${adjN.map(a => `<button class="chip" data-p="${a.s.id}:${a.n}">${a.s.id !== sid ? esc(a.s.name) + ' ' : ''}n° ${a.n}</button>`).join(' ')}</p>
+    <p class="muted"><span class="link" data-s="${sid}">Voir le district ${esc(s.name)}</span></p>`);
+  setHash(encodeURIComponent(norm(s.name).replace(/\s+/g, '-') + '-' + n));
+}
+function selectBuilding(b){
+  sel.building = b; sel.parcel = null; parcelLayer.clearLayers(); setSector(b.s.id); showAdj(b);
+  const [cx, cy] = hexCenter(b.qr[0], b.qr[1]);
+  flyCentered(P(cx, cy), Math.max(map.getZoom(), 2.75));
+  show(`<div class="kicker"><span class="bico" style="width:22px;height:22px"><img src="${b.t.icon}" alt="" style="max-width:14px;max-height:14px"></span> Bâtiment · <span class="link" data-s="${b.s.id}">${esc(b.s.name)}</span></div>
+    <h2>${esc(b.t.name)}</h2>
+    <p>${esc(b.t.bonus)}</p>
+    <p class="muted">${esc(S.realm_info_building_description)}${S.owner_bonus ? ' Bonus du propriétaire : ' + esc(S.owner_bonus.toLowerCase()) + '.' : ''}</p>
+    <h3 style="margin:12px 0 4px;font-family:var(--font-title);font-size:13px;letter-spacing:.08em;color:var(--muted)">PARCELLES BÉNÉFICIAIRES</h3>
+    <div class="chips">${b.adj.map(a => `<button class="chip" data-p="${a.s.id}:${a.n}">n° ${a.n}</button>`).join('') || '<span class="muted">aucune</span>'}</div>`);
+}
+function selectLocation(l){
+  clearSel();
+  flyCentered(P(l.p[0], l.p[1]), Math.max(map.getZoom(), 1.75));
+  show(`<div class="kicker">Lieu</div><h2>${esc(l.name)}</h2><p>${esc(l.desc)}</p>`);
+}
+
+/* district list */
+const dl = document.getElementById('dlist');
+[...D.sectors].sort((a, b) => b.tier - a.tier || a.name.localeCompare(b.name, 'fr')).forEach(s => {
+  const b = document.createElement('button'); b.dataset.s = s.id;
+  b.innerHTML = `${tierBadge(s.tier)}<span>${esc(s.name)}</span>`;
+  b.addEventListener('click', () => selectDistrict(s.id)); dl.appendChild(b);
+});
+
+/* legend with filter */
+const legend = document.getElementById('legend'); let filterType = null;
+Object.entries(D.btypes).forEach(([id, t]) => {
+  const n = buildings.filter(b => b.type === id).length;
+  const b = document.createElement('button'); b.dataset.t = id;
+  b.innerHTML = `<span class="bico"><img src="${t.icon}" alt=""></span><span>${esc(t.name)}<small>${esc(t.bonus)}</small></span><span class="n">×${n}</span>`;
+  b.title = 'Mettre en évidence ces bâtiments';
+  b.addEventListener('click', () => {
+    filterType = filterType === id ? null : id;
+    legend.querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.t === filterType));
+    buildings.forEach(bb => { const el = bb.marker.getElement(); if (el){ el.classList.toggle('dim', !!filterType && bb.type !== filterType); el.classList.toggle('hl', bb.type === filterType); } });
+  });
+  legend.appendChild(b);
+});
+
+/* toggles */
+function bindToggle(id, layer, extra){
+  const cb = document.getElementById(id);
+  const apply = () => { if (cb.checked) { if (!map.hasLayer(layer)) layer.addTo(map); } else layer.remove(); extra && extra(); };
+  cb.addEventListener('change', apply);
+}
+function updateCells(){
+  const want = document.getElementById('l-cells').checked && map.getZoom() >= 1.25;
+  if (want && !map.hasLayer(cellLayer)) { cellLayer.addTo(map); numLayer.addTo(map); setIconSize(); }
+  if (!want && map.hasLayer(cellLayer)) { cellLayer.remove(); numLayer.remove(); }
+}
+bindToggle('l-bld', bldLayer, () => setIconSize());
+bindToggle('l-roads', roadLayer);
+bindToggle('l-locs', locLayer);
+document.getElementById('l-cells').addEventListener('change', updateCells);
+
+function onZoom(){
+  const z = map.getZoom(), el = document.getElementById('map');
+  el.classList.toggle('z-lt2', z < 1.75); el.classList.toggle('z-far', z < 0.75); el.classList.toggle('z-vfar', z < 0.25);
+  updateCells(); setIconSize();
+}
+map.on('zoomend', onZoom); onZoom();
+
+/* search */
+const qi = document.getElementById('q'), qh = document.getElementById('qhint');
+const nk = s => norm(s).replace(/[-_\s]+/g, ' ').trim();
+function parseQuery(v){
+  let t = nk(v); const m = t.match(/(\d+)\s*$/), num = m ? +m[1] : null;
+  if (m) t = t.slice(0, m.index);
+  const name = t.replace(/(\s+(n°?|no)\s*)?[#°.\s]*$/, '').trim();
+  if (!name) return null;
+  const s = D.sectors.find(s => nk(s.name).startsWith(name)) || D.sectors.find(s => nk(s.name).includes(name));
+  return s ? {s, num} : null;
+}
+qi.addEventListener('input', () => {
+  const r = parseQuery(qi.value);
+  qh.textContent = !qi.value ? 'Entrée pour y aller · clic sur une case pour ses voisins'
+    : r ? (r.num ? (r.num >= 1 && r.num <= 51 ? `→ ${r.s.name} n° ${r.num}` : `${r.s.name} : numéros 1 à 51`) : `→ ${r.s.name}`) : 'Aucun district trouvé';
+});
+qi.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  const r = parseQuery(qi.value); if (!r) return;
+  if (r.num && r.num >= 1 && r.num <= 51) selectParcel(r.s.id, r.num); else selectDistrict(r.s.id);
+  if (window.matchMedia('(max-width:760px)').matches) qi.blur();
+});
+document.getElementById('reset').addEventListener('click', () => { clearSel(); map.flyToBounds(districtBounds, {...pad(), duration: .6}); });
+
+/* panel toggle */
+function openPanel(){ document.body.classList.remove('panel-closed'); }
+document.getElementById('toggle').addEventListener('click', () => document.body.classList.toggle('panel-closed'));
+
+/* deep link: #fallrock-12 */
+function fromHash(){
+  const h = decodeURIComponent(location.hash.slice(1)); if (!h || location.hash.slice(1) === ownHash) return;
+  const r = parseQuery(h); if (!r) return;
+  if (r.num) selectParcel(r.s.id, r.num); else selectDistrict(r.s.id);
+}
+fromHash();
+window.addEventListener('hashchange', fromHash);
+window.__map = map;
+})();
+</script>
+</body>
+</html>
