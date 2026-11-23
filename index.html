@@ -84,6 +84,14 @@ body.panel-closed #toggle{left:12px}
 .legend .bico{width:26px;height:26px}.legend .bico img{max-width:17px;max-height:17px}
 .legend small{display:block;color:var(--muted);font-size:12px}
 .legend .n{margin-left:auto;color:var(--muted);font-size:12px}
+.prices{width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:12px;font-variant-numeric:tabular-nums}
+.prices caption{text-align:left;font-weight:600;color:var(--text);padding-bottom:5px;font-size:13px}
+.prices caption small{color:var(--muted);font-weight:400}
+.prices th{text-align:right;color:var(--muted);font-weight:500;font-size:11px;padding:3px 4px;border-bottom:1px solid var(--line)}
+.prices td{text-align:right;padding:5px 4px;border-bottom:1px solid var(--line);white-space:nowrap}
+.prices th:first-child,.prices td:first-child{text-align:left}
+.prices td:last-child{color:var(--gold);font-weight:600}
+.pnote{color:var(--muted);font-size:11.5px;line-height:1.45;margin:0}
 .foot{padding:8px 16px 0;color:var(--muted);font-size:11.5px;line-height:1.45}
 
 /* map markers */
@@ -157,9 +165,30 @@ path.pulse{animation:pulse 1.4s ease-in-out infinite}
       </div>
     </div>
     <div class="sec"><h3>Bâtiments spéciaux <span style="text-transform:none;letter-spacing:0;font-family:var(--font-ui);font-weight:400">· clic pour les repérer</span></h3><div class="legend" id="legend"></div></div>
+    <div class="sec"><h3>Prix par niveau de district</h3>
+      <table class="prices">
+        <caption>Achat d'une colonie <small>(titre de colonie)</small></caption>
+        <thead><tr><th>Niv.</th><th>Déverrouillage</th><th>Achat</th><th>Total</th></tr></thead>
+        <tbody>
+          <tr><td><span class="tier t1">1</span></td><td>100 000 $</td><td>200 000 $</td><td>300 000 $</td></tr>
+          <tr><td><span class="tier t2">2</span></td><td>500 000 $</td><td>2 000 000 $</td><td>2 500 000 $</td></tr>
+          <tr><td><span class="tier t3">3</span></td><td>2 000 000 $</td><td>6 000 000 $</td><td>8 000 000 $</td></tr>
+        </tbody>
+      </table>
+      <table class="prices">
+        <caption>Location d'une parcelle <small>(titre de parcelle)</small></caption>
+        <thead><tr><th>Niv.</th><th>Déverrouillage</th><th>Achat</th><th>Total</th></tr></thead>
+        <tbody>
+          <tr><td><span class="tier t1">1</span></td><td>50 000 $</td><td>100 000 $</td><td>150 000 $</td></tr>
+          <tr><td><span class="tier t2">2</span></td><td>200 000 $</td><td>800 000 $</td><td>1 000 000 $</td></tr>
+          <tr><td><span class="tier t3">3</span></td><td>1 000 000 $</td><td>2 000 000 $</td><td>3 000 000 $</td></tr>
+        </tbody>
+      </table>
+      <p class="pnote">Le déverrouillage (recherche) se paie une fois, puis l'achat. On ne loue une parcelle que dans une colonie qui a un propriétaire ; en niveau 2 et 3, il faut un titre du même niveau.</p>
+    </div>
     <div class="foot">
       Fond de carte, districts, parcelles, liaisons et emplacements de bâtiments extraits des fichiers du client (texture <code>GlobalMap</code> 8192², prefab <code>Runtime_RealmGrid_v0</code>) ; types de bâtiments relevés en jeu. Identiques sur tous les serveurs.
-      Les valeurs chiffrées des bonus sont envoyées par le serveur et absentes des fichiers : elles viennent de <a href="https://robrun.info/en/guides/settlement-bonuses" target="_blank" rel="noopener" style="color:var(--accent)">robrun.info</a> (non vérifiées en jeu, peuvent changer avec les mises à jour).
+      Les valeurs chiffrées des bonus et les prix sont envoyés par le serveur et absentes des fichiers : elles viennent de <a href="https://robrun.info/en/guides/settlement-bonuses" target="_blank" rel="noopener" style="color:var(--accent)">robrun.info</a> (non vérifiées en jeu, peuvent changer avec les mises à jour).
     </div>
   </div>
 </aside>
