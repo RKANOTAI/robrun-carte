@@ -56,6 +56,8 @@ body.panel-closed #toggle{left:12px}
 /* card */
 #card{margin:8px 16px 4px;border:1px solid var(--line);border-radius:12px;background:rgba(0,0,0,.25);padding:14px;display:none}
 #card.show{display:block}
+.xlink{display:block;margin-top:10px;padding:8px 11px;border:1px solid var(--line);border-radius:9px;color:var(--accent);text-decoration:none;font-weight:600;font-size:13px;background:rgba(0,0,0,.2)}
+.xlink:hover{border-color:var(--accent)}
 #card .kicker{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;gap:8px;align-items:center}
 #card h2{margin:4px 0 6px;font-family:var(--font-title);font-weight:700;font-size:26px;line-height:1.05;transform:skewX(-6deg);transform-origin:left}
 #card p{margin:6px 0;color:#d3ccba;line-height:1.45}
@@ -152,6 +154,7 @@ path.pulse{animation:pulse 1.4s ease-in-out infinite}
       <button class="icon-btn" id="reset" title="Vue d'ensemble" aria-label="Vue d'ensemble">⌂</button>
     </div>
     <div class="hint" id="qhint">Entrée pour y aller · clic sur une case pour ses voisins</div>
+    <a class="xlink" href="looty-bay/">Carte de la ville de Looty Bay : lieux et butin →</a>
   </div>
   <div class="p-body">
     <div id="card"></div>
@@ -468,7 +471,8 @@ function selectBuilding(b){
 function selectLocation(l){
   clearSel();
   flyCentered(P(l.p[0], l.p[1]), Math.max(map.getZoom(), 1.75));
-  show(`<div class="kicker">Lieu</div><h2>${esc(l.name)}</h2><p>${esc(l.desc)}</p>`);
+  show(`<div class="kicker">Lieu</div><h2>${esc(l.name)}</h2><p>${esc(l.desc)}</p>` +
+    (l.id === 'city' ? `<a class="xlink" href="looty-bay/">Ouvrir la carte de Looty Bay : lieux et butin →</a>` : ''));
 }
 
 /* district list */

@@ -18,4 +18,17 @@ Carte navigable de l'État (carte globale) de ROB RUN : les 10 districts, leurs 
 - Types de bâtiments par emplacement : relevés en jeu (identiques sur tous les serveurs).
 - Valeurs chiffrées des bonus : envoyées par le serveur, donc absentes des fichiers ; reprises de [robrun.info](https://robrun.info/en/guides/settlement-bonuses) et non vérifiées en jeu.
 
+## Carte de Looty Bay
+
+Carte de la ville (dossier `looty-bay/`) : les 35 lieux de Looty Bay, leurs points de butin, les 154 objets qu'on y trouve et les points en extérieur (distributeurs, conteneurs de cargaison).
+
+**➜ Ouvrir la carte : https://rkanotai.github.io/robrun-carte/looty-bay/**
+
+- Clic sur un lieu : points de butin par type, objets trouvés sur place, butin aléatoire possible, clés et outils utilisables.
+- Filtres par catégorie, quartier et type de butin ; recherche par lieu ou par objet (ex. `gold bar`).
+- Onglet Objets : rareté, prix de base et prix au Fence selon la notoriété, lieux où trouver chaque objet.
+- Lien direct : `#lieu/looty-bay-bank`, `#objet/gold_bar_1`.
+
+Sources : données reprises de la carte interactive d'[EveryGameStat](https://everygamestat.com/rob-run/map) (version du jeu 0.7.0.4008, points de butin relevés le 15/11/2026). Le fond de carte est intégré à la page ; les icônes et images d'objets sont chargées depuis les serveurs d'EveryGameStat.
+
 Projet de fan non officiel. ROB RUN et ses visuels © Kefir.
