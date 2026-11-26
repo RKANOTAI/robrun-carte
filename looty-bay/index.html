@@ -52,6 +52,27 @@ main{flex:1;display:flex;min-height:0}
 .op{position:absolute;transform:translate(-50%,-50%) scale(var(--ik));width:16px;height:16px;border-radius:50%;background:var(--k);
   border:2px solid #10120e;box-shadow:0 2px 5px rgba(0,0,0,.5);z-index:1;cursor:help}
 .op[hidden],.mk .bd[hidden]{display:none}
+.cargo-point{position:absolute;transform:translate(-50%,-50%) scale(var(--ik));width:12px;height:12px;padding:0;border:2px solid #142028;border-radius:50%;background:#ffb34b;box-shadow:0 1px 4px #0008;z-index:8;cursor:pointer}
+.cargo-point::before{content:"";position:absolute;inset:-6px}
+.cargo-point.fixed{border-radius:2px;background:#69e6e1}
+.cargo-point:hover,.cargo-point:focus-visible,.cargo-point.sel{outline:3px solid #fff;z-index:9}
+.cargo-point[hidden]{display:none}
+.cargo-key{display:inline-block;width:11px;height:11px;border:1.5px solid #142028;border-radius:50%;background:#ffb34b;flex:none}
+.cargo-key.fixed{border-radius:2px;background:#69e6e1}
+.cargo-summary{display:flex;gap:8px;margin:12px 0}
+.cargo-summary>div{flex:1;background:var(--panel2);border:1px solid var(--line2);border-radius:10px;padding:10px}
+.cargo-summary b{display:block;font-size:22px;color:var(--gold)}
+.cargo-summary span{color:var(--muted);font-size:13px}
+.cargo-note{border-left:3px solid #ffb34b;background:var(--panel2);padding:10px 12px;border-radius:0 8px 8px 0;color:#cbd8de;font-size:14px}
+.cargo-tools{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.cargo-point-list{max-height:210px;overflow:auto;display:grid;gap:5px;margin-top:8px}
+.cargo-row{display:flex;align-items:center;gap:7px;text-align:left;width:100%;background:var(--panel2);border:1px solid var(--line2);border-radius:8px;padding:7px 9px;cursor:pointer;font-size:13px}
+.cargo-row[aria-pressed="true"]{border-color:var(--gold)}
+.cargo-row small{margin-left:auto;color:var(--muted);white-space:nowrap}
+.cargo-legend{border-top:1px solid var(--line);margin-top:8px;padding-top:1px}
+.cargo-legend label{font-size:13px}
+.cargo-catalog{display:grid;gap:6px}
+.cargo-catalog .btn{text-align:left;font-size:14px}
 .mapctl{position:absolute;top:12px;right:12px;display:flex;flex-direction:column;gap:6px;z-index:10}
 .mapctl button{width:36px;height:36px;border-radius:9px;border:1px solid var(--line2);background:#0f1a20e6;cursor:pointer;font-size:18px;display:grid;place-items:center}
 .mapctl button:hover{border-color:var(--accent)}
@@ -203,12 +224,14 @@ kbd{font:11px ui-monospace,monospace;background:var(--panel3);border:1px solid v
     <nav class="tabs" id="tabs">
       <button data-tab="list">Lieux</button>
       <button data-tab="items">Objets</button>
+      <button data-tab="cargo">Cargaisons</button>
       <button data-tab="info">Infos</button>
     </nav>
     <div id="side"></div>
   </aside>
 </main>
 
+<script src="cargo-data.js"></script>
 <script>
 "use strict";
 /* ====================================================================
@@ -226,7 +249,9 @@ for (const k in CAT) CAT[k].c = A.catColor[k];
 /* Images du site (hébergées par EveryGameStat) */
 const imgTag = (src, cls="") => `<img src="${src}"${cls ? ` class="${cls}"` : ""} alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.visibility='hidden'">`;
 const placeIcon = slug => A.art + "icon-poi-" + A.place[slug][0] + ".webp";
-const itemImg = id => A.itemArt + (A.itemImg[id] || id) + ".webp";
+const CARGO_ART = Object.fromEntries(CARGO_DATA.items.map(i => [i.id,
+  "assets/cargo/" + (i.id.startsWith("bush_") ? i.id.replace(/_\d+$/,"") : i.id) + ".png"]));
+const itemImg = id => CARGO_ART[id] || A.itemArt + (A.itemImg[id] || id) + ".webp";
 const kdot = k => `<i class="kd" style="--k:${A.kindColor[k]}"></i>`;
 const CAT_ORDER = ["heist","store","food","hotel","home","service"];
 const KIND = {
@@ -307,6 +332,12 @@ const IT = {};
 for (const [id,a] of Object.entries(D.items)) {
   IT[id] = {id, name:a[0], cat:a[1], rar:a[2], sell:a[3], size:a[4], type:a[5], fence:a[6], sn:norm(a[0]), places:[], uses:[]};
 }
+const C = CARGO_DATA;
+const CARGO_ITEMS = Object.fromEntries(C.items.map(i => [i.id,i]));
+for (const i of C.items) {
+  IT[i.id] = {id:i.id,name:i.name,cat:"contraband",rar:i.rarity,sell:0,size:"",type:"Cargo",fence:[],
+    sn:norm([i.name,i.aliases,RAR[i.rarity]].join(" ")),places:[],uses:[]};
+}
 const BYITEM = {};
 for (const [slug,R] of Object.entries(D.rel)) {
   for (const k of ["f","r","m","n","u"]) for (const e of R[k]) {
@@ -338,6 +369,14 @@ for (const [slug,name,district] of (D.unplaced || [])) {
 }
 const MAPPED = PL.filter(p => p.placed);
 const PBY = Object.fromEntries(PL.map(p => [p.slug,p]));
+const CARGO_BY_PLACE = Object.fromEntries(C.buildings.map(b => [b.slug,b]));
+const CARGO = C.buildings.flatMap(b => ["random","fixed"].flatMap(kind => b[kind].map(([id,x,y,z,item]) => ({
+  id,slug:b.slug,kind,item,world:[x,y,z],
+  x:x*C.projection.xScale+C.projection.xOffset,
+  y:z*C.projection.zScale+C.projection.zOffset
+}))));
+const CARGO_BY_ID = Object.fromEntries(CARGO.map(p => [p.id,p]));
+const cargoName = p => p.kind === "fixed" ? (p.item === "weapon_box_1" ? "Caisse de pièces d’armes" : "Sac bancaire rempli d’argent") : "Emplacement aléatoire";
 const DIST_ORDER = D.map.districts;
 // Points extérieurs (DAB / coffres / conteneurs) regroupés par position
 const OUT = []; const om = {};
@@ -357,7 +396,8 @@ const TOTAL_IN = PL.reduce((s,p) => s+p.nSpots, 0);
 
 /* ---------- État ---------- */
 const S = {view:"list", sel:null, item:null, q:"", qn:"", cats:new Set(), dists:new Set(), loot:null,
-           iq:"", iqn:"", rars:new Set(), icats:new Set(), sort:"value", outdoor:false};
+           iq:"", iqn:"", rars:new Set(), icats:new Set(), sort:"value", outdoor:false,
+           cargoRandom:false,cargoFixed:false,cargoKind:"all",cargoPoint:null};
 const HIST = [];
 
 /* ====================================================================
@@ -450,7 +490,7 @@ vp.addEventListener("wheel", e => {
   zoomAt(Math.exp(-e.deltaY*0.0016), e.clientX-r.left, e.clientY-r.top);
 }, {passive:false});
 vp.addEventListener("dblclick", e => {
-  if (e.target.closest(".mk")) return;
+  if (e.target.closest(".mk,.cargo-point")) return;
   const r = vp.getBoundingClientRect(); zoomAt(1.8, e.clientX-r.left, e.clientY-r.top);
 });
 const zc = f => { const r = vp.getBoundingClientRect(); cancelAnimationFrame(anim); zoomAt(f, r.width/2, r.height/2); };
@@ -464,6 +504,23 @@ function buildMap(){
   $("#dlabels").innerHTML = D.map.labels.map(([n,x,y]) =>
     `<span class="dlab" style="left:${x*SX}px;top:${y*SY}px">${esc(n)}</span>`).join("");
   const box = $("#markers");
+  for (const c of CARGO) {
+    const b = document.createElement("button");
+    b.className = "cargo-point" + (c.kind === "fixed" ? " fixed" : "");
+    b.hidden = true;
+    b.style.left = c.x*SX + "px"; b.style.top = c.y*SY + "px";
+    const label = `${cargoName(c)} · ${PBY[c.slug].full} · point ${c.id}`;
+    b.setAttribute("aria-label",label);
+    b.dataset.cargoId = c.id;
+    const content = `<b>${esc(cargoName(c))}</b><span>${esc(PBY[c.slug].full)} · altitude ${c.world[1].toFixed(1)} m</span><br><span>${c.kind === "random" ? "Type et présence non déterminés" : "Type défini dans le client · disponibilité non vérifiée"}</span>`;
+    b.addEventListener("pointerenter",e => showTip(e,content));
+    b.addEventListener("pointermove",moveTip);
+    b.addEventListener("pointerleave",hideTip);
+    b.addEventListener("focus",() => {const r=b.getBoundingClientRect();showTip({clientX:r.right,clientY:r.top},content);});
+    b.addEventListener("blur",hideTip);
+    b.addEventListener("click",() => {if (!justDragged) selectCargo(c.id);});
+    box.appendChild(b); c.el = b;
+  }
   for (const o of OUT) {
     const el = document.createElement("div");
     el.className = "op";
@@ -535,6 +592,16 @@ function updateMap(){
     o.el.hidden = itemMode || !(byLoot || byBox);
     o.el.style.setProperty("--k", A.kindColor[filterOn && S.loot && o.kinds.includes(S.loot) ? S.loot : o.main]);
   }
+  for (const c of CARGO) {
+    const selectedPlace = S.view === "place" && S.sel === c.slug;
+    const enabled = c.kind === "random" ? S.cargoRandom : S.cargoFixed;
+    const matchingKind = S.view !== "cargo" || S.cargoKind === "all" || S.cargoKind === c.kind;
+    const matchingPlace = S.view === "place" ? selectedPlace : !filterOn || placeMatches(PBY[c.slug]);
+    c.el.hidden = itemMode || !enabled || !matchingKind || !matchingPlace;
+    c.el.classList.toggle("sel",S.cargoPoint === c.id);
+  }
+  $("#cargo-random").checked = S.cargoRandom;
+  $("#cargo-fixed").checked = S.cargoFixed;
 }
 
 /* ====================================================================
@@ -542,34 +609,50 @@ function updateMap(){
    ==================================================================== */
 const side = $("#side");
 function go(view, arg, opt={}){
-  HIST.push({view:S.view, sel:S.sel, item:S.item, scroll:side.scrollTop});
+  HIST.push({view:S.view, sel:S.sel, item:S.item, cargoPoint:S.cargoPoint, scroll:side.scrollTop});
   if (HIST.length > 60) HIST.shift();
   S.view = view;
-  if (view === "place") S.sel = arg;
+  S.cargoPoint = null;
+  if (view === "place") {S.sel = arg; S.cargoRandom = true; S.cargoFixed = true;}
   if (view === "item") S.item = arg;
   render(opt);
 }
 function back(){
   const h = HIST.pop();
   if (!h) { S.view = S.view === "item" ? "items" : "list"; render(); return; }
-  S.view = h.view; S.sel = h.sel; S.item = h.item;
+  S.view = h.view; S.sel = h.sel; S.item = h.item; S.cargoPoint = h.cargoPoint;
   render({scroll:h.scroll, focus:false});
 }
-function tab(view){ HIST.length = 0; S.view = view; render(); }
+function tab(view){
+  HIST.length = 0; S.view = view; S.cargoPoint = null;
+  if (view === "cargo") {S.cargoRandom = true; S.cargoFixed = true;}
+  render();
+}
+
+function selectCargo(id){
+  const c = CARGO_BY_ID[id]; if (!c) return;
+  hideTip();
+  HIST.push({view:S.view,sel:S.sel,item:S.item,cargoPoint:S.cargoPoint,scroll:side.scrollTop});
+  S.view = "place"; S.sel = c.slug; S.cargoPoint = c.id;
+  if (c.kind === "random") S.cargoRandom = true; else S.cargoFixed = true;
+  render({focus:false}); focusPoint(c.x,c.y,5);
+  $("#cargo-place").scrollIntoView({block:"nearest"});
+}
 
 function render(opt={}){
-  const t = {list:"list",place:"list",items:"items",item:"items",info:"info"}[S.view];
+  const t = {list:"list",place:"list",items:"items",item:"items",cargo:"cargo",info:"info"}[S.view];
   $$("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === t));
   if (S.view === "list") listView();
   else if (S.view === "place") side.innerHTML = placeHTML(PBY[S.sel]);
   else if (S.view === "items") itemsView();
   else if (S.view === "item") side.innerHTML = itemHTML(IT[S.item]);
+  else if (S.view === "cargo") side.innerHTML = cargoHTML();
   else side.innerHTML = infoHTML();
   side.scrollTop = opt.scroll || 0;
   updateMap();
   if (S.view === "place" && opt.focus !== false) { const p = PBY[S.sel]; if (p.placed) focusPoint(p.x, p.y); }
   if (S.view === "item" && opt.focus !== false) fitPlaces(IT[S.item].places.map(s => PBY[s]).filter(p => p.placed));
-  const h = S.view === "place" ? "#lieu/" + S.sel : S.view === "item" ? "#objet/" + S.item : S.view === "items" ? "#objets" : S.view === "info" ? "#infos" : "";
+  const h = S.view === "place" ? (S.cargoPoint ? "#cargaison/"+S.cargoPoint : "#lieu/" + S.sel) : S.view === "item" ? "#objet/" + S.item : S.view === "items" ? "#objets" : S.view === "cargo" ? "#cargaisons" : S.view === "info" ? "#infos" : "";
   try { history.replaceState(null, "", h || location.pathname + location.search); } catch (err) {}
 }
 
@@ -688,6 +771,7 @@ function placeHTML(p){
       <p class="note">Comptés d'après les données de la carte (relevé du 15/11/2026). Ce que contient chaque point est aléatoire et varie selon le serveur.</p>`
       : p.placed ? `<p class="muted">Aucun point de butin : c'est un lieu de service.</p>` : `<p class="muted">Pas de relevé de points de butin pour ce lieu (il n'est pas placé sur la carte).</p>`}
     </div>
+    ${cargoPlaceHTML(p)}
     ${sec("Trouvé ici", f, "Objets à emplacement fixe dans ce lieu (×&nbsp;quantité).")}
     ${sec("Butin aléatoire possible", r, "Le jeu tire au sort ce qui se trouve sur chaque point. Correspondance établie sur le type de point (nombre de points de ce type ici), non confirmée pour cet objet précis.")}
     ${sec("Peut aussi apparaître", m)}
@@ -764,12 +848,41 @@ function itemHTML(i){
       <dt>Lieux</dt><dd>${plural(i.places.length,"lieu","lieux")}</dd>
     </dl>
     ${price}
+    ${CARGO_ITEMS[i.id] ? `<div class="cargo-note">${esc(CARGO_ITEMS[i.id].use)}<br><b>Lieu d’apparition non déterminé.</b> Les emplacements aléatoires ne précisent pas quel objet y apparaît.</div><p><button class="btn" data-act="cargo">Voir les emplacements de cargaison</button></p>` : ""}
     ${sec("Trouvé à", f, "Emplacement fixe (×&nbsp;quantité).")}
     ${sec("Butin aléatoire possible à", r, "Nombre de points du type correspondant dans chaque lieu. Le contenu réel est tiré au sort.")}
     ${sec("Peut apparaître à", m)}
     ${sec("À prendre sous condition à", n)}
     ${sec("S'utilise à", u)}
-    ${!L.length ? `<p class="note">Cet objet n'est rattaché à aucun lieu de la carte.</p>` : ""}`;
+    ${!L.length && !CARGO_ITEMS[i.id] ? `<p class="note">Cet objet n'est rattaché à aucun lieu de la carte.</p>` : ""}`;
+}
+
+/* ---------- Cargaisons : placements du client, distincts du butin en vrac ---------- */
+function cargoPlaceHTML(p){
+  const b = CARGO_BY_PLACE[p.slug]; if (!b) return "";
+  const points = CARGO.filter(c => c.slug === p.slug);
+  return `<section class="sec" id="cargo-place"><h3>Cargaisons <span class="n">${points.length} emplacements</span></h3>
+    <div class="spots"><div class="spot"><i class="cargo-key"></i>Aléatoires<b>${b.random.length}</b></div>
+    <div class="spot"><i class="cargo-key fixed"></i>Fixes<b>${b.fixed.length}</b></div></div>
+    <p class="cargo-note">${b.random.length ? "Emplacements possibles : le type de cargaison et sa présence ne sont pas indiqués. Aucun plant ni bidon n’est attribué à ce lieu par ces données." : ""}
+    ${b.fixed.length ? `<br>${b.fixed.length} ${p.slug === "police-station" ? "caisses de pièces d’armes" : "sacs bancaires remplis d’argent"} définis dans le client. Leur disponibilité actuelle n’est pas vérifiée.` : ""}</p>
+    <div class="cargo-tools"><button class="btn" data-act="cargo-center">Voir tous les emplacements de ce lieu</button><button class="btn" data-act="cargo">Toutes les cargaisons</button></div>
+    <details${S.cargoPoint ? " open" : ""}><summary>Points précis et étages</summary><p class="note">L’altitude Y distingue les étages ; plusieurs points peuvent se superposer sur la carte.</p>
+    <div class="cargo-point-list">${points.map(c => `<button class="cargo-row" data-cargo-point="${c.id}" aria-pressed="${S.cargoPoint === c.id}"><i class="cargo-key${c.kind === "fixed" ? " fixed" : ""}"></i><span>${esc(cargoName(c))}</span><small>Y ${c.world[1].toFixed(1)} m · #${c.id}</small></button>`).join("")}</div></details></section>`;
+}
+
+function cargoHTML(){
+  const list = C.buildings.filter(b => S.cargoKind === "all" || b[S.cargoKind].length)
+    .sort((a,b) => (S.cargoKind === "fixed" ? b.fixed.length-a.fixed.length : b.random.length-a.random.length) || PBY[a.slug].full.localeCompare(PBY[b.slug].full));
+  return `<div class="info"><h2 style="margin:0">Cargaisons</h2><p>Emplacements extraits des fichiers du jeu le 26/11/2026.</p>
+    <div class="cargo-summary"><div><b>170</b><span>emplacements aléatoires</span></div><div><b>8</b><span>cargaisons fixes définies</span></div></div>
+    <p class="cargo-note">Un point indique où chercher, pas un objet garanti. Pour les points aléatoires, le type, la probabilité et la présence de cargaison restent inconnus.</p>
+    <div class="cargo-tools" aria-label="Type de cargaison">${[["all","Tout"],["random","Aléatoires"],["fixed","Fixes"]].map(([k,n]) => `<button class="chip${S.cargoKind === k ? " on" : ""}" data-cargo-kind="${k}" aria-pressed="${S.cargoKind === k}">${n}</button>`).join("")}</div>
+    <div class="sec"><h3>Où chercher <span class="n">${list.length} lieux</span></h3>${list.map(b => placeRow(b.slug,`${b.random.length} aléat. · ${b.fixed.length} fixes`)).join("")}</div>
+    <div class="sec"><h3>Plants et laboratoire</h3><p>Ces cargaisons existent dans le jeu. Leur répartition entre commerces n’est pas déterminée par les fichiers de placement.</p>
+    <div class="cargo-catalog">${C.items.map(i => `<button class="btn" data-item="${i.id}">${esc(i.name)} <span class="tag" style="--rc:var(--r${i.rarity})">${RAR[i.rarity]}</span></button>`).join("")}</div></div>
+    <p class="note">Les 14 conteneurs extérieurs déjà présents sur la carte constituent une autre couche. Les cargaisons fixes du commissariat et de la banque figurent déjà dans leurs listes d’objets : elles ne sont pas ajoutées une deuxième fois.</p>
+    <p><a href="CARGO-SOURCES.md">Sources et méthode</a> · <a href="cargo-locations.csv" download>Coordonnées des 178 points (CSV)</a></p></div>`;
 }
 
 /* ---------- Vue : infos ---------- */
@@ -780,12 +893,13 @@ function infoHTML(){
   return `<div class="info">
     <div class="sec" style="margin-top:0"><h3>À propos</h3>
       <p>Carte personnelle de <b>Looty Bay</b>, la ville de ROB RUN (Kefir) : ${MAPPED.length} lieux répartis sur ${DIST_ORDER.length} quartiers,
-      ${fmt(TOTAL_IN)} points de butin en bâtiment, ${D.map.pins.length} points en extérieur et ${Object.keys(IT).length} objets rattachés aux lieux.
+       ${fmt(TOTAL_IN)} points de butin en bâtiment, ${D.map.pins.length} points en extérieur et ${Object.keys(IT).length} objets au catalogue.
       ${PL.length - MAPPED.length} cottages de Loraine Hills (No. 3, 4 et 5) sont cités dans les données des objets sans position sur la carte : ils apparaissent dans la liste avec la mention « hors carte ».</p>
       <ul>
         <li>Version des données du jeu : <b>${esc(D.build)}</b></li>
         <li>Points de butin relevés le <b>15/11/2026</b>, objets le <b>09/11/2026</b></li>
         <li>Source : EveryGameStat, carte interactive ROB RUN (everygamestat.com/rob-run/map), reprise le 25/11/2026</li>
+        <li>Cargaisons : 170 emplacements aléatoires et 8 fixes extraits du client installé le 26/11/2026. <a href="CARGO-SOURCES.md">Sources et limites</a>.</li>
         <li>Fond de carte intégré au fichier. Icônes, fiches et images d'objets chargées depuis les serveurs d'EveryGameStat (connexion Internet nécessaire pour les voir).</li>
       </ul>
     </div>
@@ -795,6 +909,7 @@ function infoHTML(){
       <li>Avec un filtre « Type de butin », le badge doré indique le nombre de points de ce type dans le lieu.</li>
       <li>Sur la fiche d'un objet, les badges indiquent : <b>×N</b> trouvé (quantité), <b>~N</b> aléatoire (N points du bon type), <b>?</b> peut apparaître, <b>🔑</b> s'utilise ici, <b>🔒</b> accès protégé.</li>
       <li>Le contenu de chaque point est aléatoire et varie selon le serveur.</li>
+      <li>Cargaisons : les ronds orange indiquent des emplacements aléatoires sans type d’objet connu ; les carrés turquoise, les 8 cargaisons fixes définies. Cliquez un point pour ouvrir son lieu et son altitude. Les fiches de lieux affichent leurs cargaisons automatiquement.</li>
       <li>Raccourcis : <kbd>/</kbd> rechercher, <kbd>Échap</kbd> retour.</li>
     </ul></div>
     <div class="sec"><h3>Missions spéciales <span class="n">${jobs.length}</span></h3>
@@ -816,6 +931,10 @@ function infoHTML(){
 side.addEventListener("click", e => {
   const t = e.target.closest("button"); if (!t) return;
   const d = t.dataset;
+  if (d.cargoPoint) return selectCargo(Number(d.cargoPoint));
+  if (d.cargoKind) {S.cargoKind = d.cargoKind; return render({focus:false});}
+  if (d.act === "cargo") return tab("cargo");
+  if (d.act === "cargo-center") return fitPlaces(CARGO.filter(c => c.slug === S.sel));
   if (d.slug) return go("place", d.slug);
   if (d.item) return go("item", d.item);
   if (d.act === "back") return back();
@@ -842,8 +961,12 @@ $("#hstats").innerHTML = [
   [MAPPED.length,"lieux"],[DIST_ORDER.length,"quartiers"],[fmt(TOTAL_IN),"points de butin"],[D.map.pins.length,"points extérieurs"],[Object.keys(IT).length,"objets"]
 ].map(([n,l]) => `<div><b>${n}</b><span>${l}</span></div>`).join("");
 $("#legend").innerHTML = `<div class="lg">${CAT_ORDER.map(c => `<span style="--cc:${CAT[c].c}"><i></i>${CAT[c].fr}</span>`).join("")}</div>
-  <label><input type="checkbox" id="outdoor"> Points extérieurs : <i class="kd" style="--k:${A.kindColor.atm}"></i> DAB · <i class="kd" style="--k:${A.kindColor.cargo}"></i> conteneurs</label>`;
+  <label><input type="checkbox" id="outdoor"> Points extérieurs : <i class="kd" style="--k:${A.kindColor.atm}"></i> DAB · <i class="kd" style="--k:${A.kindColor.cargo}"></i> conteneurs</label>
+  <div class="cargo-legend"><label><input type="checkbox" id="cargo-random"><i class="cargo-key"></i> Cargaisons aléatoires · 170 emplacements</label>
+  <label><input type="checkbox" id="cargo-fixed"><i class="cargo-key fixed"></i> Cargaisons fixes · 8 emplacements</label></div>`;
 $("#outdoor").addEventListener("change", e => { S.outdoor = e.target.checked; updateMap(); });
+$("#cargo-random").addEventListener("change",e => {S.cargoRandom=e.target.checked;updateMap();});
+$("#cargo-fixed").addEventListener("change",e => {S.cargoFixed=e.target.checked;updateMap();});
 
 /* ---------- Démarrage ---------- */
 $("#brand").src = A.art + A.brand;
@@ -853,12 +976,17 @@ function applyHash(){
   const h = decodeURIComponent(location.hash.slice(1));
   const [kind, id] = h.split("/");
   HIST.length = 0;
+  S.cargoPoint = null;
   if (kind === "lieu" && PBY[id]) { S.view = "place"; S.sel = id; }
   else if (kind === "objet" && IT[id]) { S.view = "item"; S.item = id; }
   else if (kind === "objets") S.view = "items";
   else if (kind === "infos") S.view = "info";
+  else if (kind === "cargaisons") {S.view="cargo";S.cargoRandom=true;S.cargoFixed=true;}
+  else if (kind === "cargaison" && CARGO_BY_ID[id]) {S.view="place";S.sel=CARGO_BY_ID[id].slug;S.cargoPoint=Number(id);}
   else S.view = "list";
+  if (S.view === "place") {S.cargoRandom=true;S.cargoFixed=true;}
   render();
+  if (S.cargoPoint) {const c=CARGO_BY_ID[S.cargoPoint];focusPoint(c.x,c.y,5);$("#cargo-place").scrollIntoView({block:"nearest"});}
 }
 addEventListener("hashchange", applyHash);
 applyHash();

@@ -20,7 +20,7 @@ Carte navigable de l'État (carte globale) de ROB RUN : les 10 districts, leurs 
 
 ## Carte de Looty Bay
 
-Carte de la ville (dossier `looty-bay/`) : les 35 lieux de Looty Bay, leurs points de butin, les 154 objets qu'on y trouve et les points en extérieur (distributeurs, conteneurs de cargaison).
+Carte de la ville (dossier `looty-bay/`) : les 35 lieux de Looty Bay, leurs points de butin, 154 objets rattachés aux lieux et 8 variantes de plants/réactifs d’origine non déterminée, ainsi que les points en extérieur (distributeurs, conteneurs de cargaison).
 
 **➜ Ouvrir la carte : https://rkanotai.github.io/robrun-carte/looty-bay/**
 
@@ -28,6 +28,9 @@ Carte de la ville (dossier `looty-bay/`) : les 35 lieux de Looty Bay, leurs poin
 - Filtres par catégorie, quartier et type de butin ; recherche par lieu ou par objet (ex. `gold bar`).
 - Onglet Objets : rareté, prix de base et prix au Fence selon la notoriété, lieux où trouver chaque objet.
 - Lien direct : `#lieu/looty-bay-bank`, `#objet/gold_bar_1`.
+- Onglet Cargaisons : 170 emplacements aléatoires et 8 cargaisons fixes, calques distincts, points cliquables avec altitude et décompte sur chaque fiche de lieu.
+- Plants et réactifs recherchables (`plantweed`, `bidon`, `laboratoire`) ; leur commerce d’apparition reste explicitement non déterminé.
+- Liens directs de cargaison : `#cargaisons`, `#cargaison/481`, `#objet/reagents_1`. [Sources et limites](looty-bay/CARGO-SOURCES.md), [coordonnées CSV](looty-bay/cargo-locations.csv).
 
 Sources : données reprises de la carte interactive d'[EveryGameStat](https://everygamestat.com/rob-run/map) (version du jeu 0.7.0.4008, points de butin relevés le 15/11/2026). Le fond de carte est intégré à la page ; les icônes et images d'objets sont chargées depuis les serveurs d'EveryGameStat.
 
