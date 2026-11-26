@@ -370,13 +370,16 @@ for (const [slug,name,district] of (D.unplaced || [])) {
 const MAPPED = PL.filter(p => p.placed);
 const PBY = Object.fromEntries(PL.map(p => [p.slug,p]));
 const CARGO_BY_PLACE = Object.fromEntries(C.buildings.map(b => [b.slug,b]));
+const CARGO_FAMILIES = {plants:"Plantes",reagents:"Réactifs de laboratoire"};
+const cargoReportsForItem = id => C.reports.filter(r => r.family === (id.startsWith("bush_") ? "plants" : "reagents"));
+for (const r of C.reports) PBY[r.slug].sn += " " + norm(CARGO_FAMILIES[r.family] + (r.family === "plants" ? " plantweed weed buisson" : " bidon laboratoire réactif"));
 const CARGO = C.buildings.flatMap(b => ["random","fixed"].flatMap(kind => b[kind].map(([id,x,y,z,item]) => ({
   id,slug:b.slug,kind,item,world:[x,y,z],
   x:x*C.projection.xScale+C.projection.xOffset,
   y:z*C.projection.zScale+C.projection.zOffset
 }))));
 const CARGO_BY_ID = Object.fromEntries(CARGO.map(p => [p.id,p]));
-const cargoName = p => p.kind === "fixed" ? (p.item === "weapon_box_1" ? "Caisse de pièces d’armes" : "Sac bancaire rempli d’argent") : "Emplacement aléatoire";
+const cargoName = p => p.kind === "fixed" ? (p.item === "weapon_box_1" ? "Caisse de pièces d’armes" : "Sac bancaire rempli d’argent") : C.reports.some(r => r.slug === p.slug && r.observedOnly) ? "Emplacement de plantes · observé" : "Emplacement aléatoire";
 const DIST_ORDER = D.map.districts;
 // Points extérieurs (DAB / coffres / conteneurs) regroupés par position
 const OUT = []; const om = {};
@@ -512,7 +515,7 @@ function buildMap(){
     const label = `${cargoName(c)} · ${PBY[c.slug].full} · point ${c.id}`;
     b.setAttribute("aria-label",label);
     b.dataset.cargoId = c.id;
-    const content = `<b>${esc(cargoName(c))}</b><span>${esc(PBY[c.slug].full)} · altitude ${c.world[1].toFixed(1)} m</span><br><span>${c.kind === "random" ? "Type et présence non déterminés" : "Type défini dans le client · disponibilité non vérifiée"}</span>`;
+    const content = `<b>${esc(cargoName(c))}</b><span>${esc(PBY[c.slug].full)} · altitude ${c.world[1].toFixed(1)} m</span><br><span>${c.kind === "random" ? "Présence variable · voir les signalements du lieu" : "Type défini dans le client · disponibilité non vérifiée"}</span>`;
     b.addEventListener("pointerenter",e => showTip(e,content));
     b.addEventListener("pointermove",moveTip);
     b.addEventListener("pointerleave",hideTip);
@@ -810,7 +813,7 @@ function refreshItems(){
   $("#icount").textContent = `${list.length} ${list.length > 1 ? "objets" : "objet"} sur ${Object.keys(IT).length}`;
   $("#ilist").innerHTML = list.length ? list.map(i => {
     const sub = i.type === "Key" && i.uses.length ? "pour " + esc(i.uses.map(s => PBY[s].full).join(", ")) : esc(ITYPE[i.type] || i.type);
-    return itemRow(i.id, plural(i.places.length,"lieu","lieux"), sub);
+    return itemRow(i.id, CARGO_ITEMS[i.id] ? `${cargoReportsForItem(i.id).length} lieux signalés (famille)` : plural(i.places.length,"lieu","lieux"), sub);
   }).join("") : `<div class="empty">Aucun objet ne correspond.</div>`;
 }
 
@@ -845,10 +848,10 @@ function itemHTML(i){
       <dt>Type</dt><dd>${esc(ITYPE[i.type] || i.type)}</dd>
       ${i.size ? `<dt>Taille</dt><dd>${esc(i.size)} cases</dd>` : ""}
       <dt>Prix de base</dt><dd style="color:var(--gold);font-weight:700">${i.sell ? money(i.sell) : "—"}</dd>
-      <dt>Lieux</dt><dd>${plural(i.places.length,"lieu","lieux")}</dd>
+      <dt>Lieux</dt><dd>${CARGO_ITEMS[i.id] ? "Voir les signalements de cette famille ci-dessous" : plural(i.places.length,"lieu","lieux")}</dd>
     </dl>
     ${price}
-    ${CARGO_ITEMS[i.id] ? `<div class="cargo-note">${esc(CARGO_ITEMS[i.id].use)}<br><b>Lieu d’apparition non déterminé.</b> Les emplacements aléatoires ne précisent pas quel objet y apparaît.</div><p><button class="btn" data-act="cargo">Voir les emplacements de cargaison</button></p>` : ""}
+    ${CARGO_ITEMS[i.id] ? `<div class="cargo-note">${esc(CARGO_ITEMS[i.id].use)}<br>Les signalements concernent la famille de cargaison ; ils ne confirment pas cette rareté ou cet état précis.</div><section class="sec"><h3>Où chercher cette famille</h3>${cargoReportsForItem(i.id).map(r => placeRow(r.slug,"Signalé",esc(r.detail))).join("")}</section><p><button class="btn" data-act="cargo">Voir les emplacements de cargaison</button></p>` : ""}
     ${sec("Trouvé à", f, "Emplacement fixe (×&nbsp;quantité).")}
     ${sec("Butin aléatoire possible à", r, "Nombre de points du type correspondant dans chaque lieu. Le contenu réel est tiré au sort.")}
     ${sec("Peut apparaître à", m)}
@@ -858,13 +861,17 @@ function itemHTML(i){
 }
 
 /* ---------- Cargaisons : placements du client, distincts du butin en vrac ---------- */
+function cargoReportsHTML(slug){
+  return C.reports.filter(r => r.slug === slug).map(r => `<div class="cargo-note"><b>${esc(CARGO_FAMILIES[r.family])}${r.observedOnly ? " uniquement — observé en jeu" : " — signalés"}</b><br>${esc(r.detail)}<br><small>${esc(r.confidence)} · sources consultées le ${esc(C.reportsChecked)}<br>${r.sources.map(id => { const s = C.reportSources[id]; return s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.title)}</a>` : esc(s.title); }).join(" · ")}</small></div>`).join("");
+}
 function cargoPlaceHTML(p){
   const b = CARGO_BY_PLACE[p.slug]; if (!b) return "";
   const points = CARGO.filter(c => c.slug === p.slug);
   return `<section class="sec" id="cargo-place"><h3>Cargaisons <span class="n">${points.length} emplacements</span></h3>
     <div class="spots"><div class="spot"><i class="cargo-key"></i>Aléatoires<b>${b.random.length}</b></div>
     <div class="spot"><i class="cargo-key fixed"></i>Fixes<b>${b.fixed.length}</b></div></div>
-    <p class="cargo-note">${b.random.length ? "Emplacements possibles : le type de cargaison et sa présence ne sont pas indiqués. Aucun plant ni bidon n’est attribué à ce lieu par ces données." : ""}
+    ${cargoReportsHTML(p.slug)}
+    <p class="cargo-note">${b.random.length ? "Le nombre et les positions viennent du client. Les signalements concernent le commerce ou ses environs, sans attribuer un type à chaque point. La présence varie selon la visite." : ""}
     ${b.fixed.length ? `<br>${b.fixed.length} ${p.slug === "police-station" ? "caisses de pièces d’armes" : "sacs bancaires remplis d’argent"} définis dans le client. Leur disponibilité actuelle n’est pas vérifiée.` : ""}</p>
     <div class="cargo-tools"><button class="btn" data-act="cargo-center">Voir tous les emplacements de ce lieu</button><button class="btn" data-act="cargo">Toutes les cargaisons</button></div>
     <details${S.cargoPoint ? " open" : ""}><summary>Points précis et étages</summary><p class="note">L’altitude Y distingue les étages ; plusieurs points peuvent se superposer sur la carte.</p>
@@ -876,9 +883,9 @@ function cargoHTML(){
     .sort((a,b) => (S.cargoKind === "fixed" ? b.fixed.length-a.fixed.length : b.random.length-a.random.length) || PBY[a.slug].full.localeCompare(PBY[b.slug].full));
   return `<div class="info"><h2 style="margin:0">Cargaisons</h2><p>Emplacements extraits des fichiers du jeu le 26/11/2026.</p>
     <div class="cargo-summary"><div><b>170</b><span>emplacements aléatoires</span></div><div><b>8</b><span>cargaisons fixes définies</span></div></div>
-    <p class="cargo-note">Un point indique où chercher, pas un objet garanti. Pour les points aléatoires, le type, la probabilité et la présence de cargaison restent inconnus.</p>
+    <p class="cargo-note">Un point indique où chercher, pas un objet garanti. Les observations de joueurs et guides renseignent certains commerces ci-dessous. Les probabilités et la disponibilité actuelle restent inconnues.</p>
     <div class="cargo-tools" aria-label="Type de cargaison">${[["all","Tout"],["random","Aléatoires"],["fixed","Fixes"]].map(([k,n]) => `<button class="chip${S.cargoKind === k ? " on" : ""}" data-cargo-kind="${k}" aria-pressed="${S.cargoKind === k}">${n}</button>`).join("")}</div>
-    <div class="sec"><h3>Où chercher <span class="n">${list.length} lieux</span></h3>${list.map(b => placeRow(b.slug,`${b.random.length} aléat. · ${b.fixed.length} fixes`)).join("")}</div>
+    <div class="sec"><h3>Où chercher <span class="n">${list.length} lieux</span></h3>${list.map(b => placeRow(b.slug,`${b.random.length} aléat. · ${b.fixed.length} fixes`,C.reports.filter(r => r.slug === b.slug).map(r => esc(CARGO_FAMILIES[r.family]) + (r.observedOnly ? " uniquement · observé" : " · signalés")).join(" · "))).join("")}</div>
     <div class="sec"><h3>Plants et laboratoire</h3><p>Ces cargaisons existent dans le jeu. Leur répartition entre commerces n’est pas déterminée par les fichiers de placement.</p>
     <div class="cargo-catalog">${C.items.map(i => `<button class="btn" data-item="${i.id}">${esc(i.name)} <span class="tag" style="--rc:var(--r${i.rarity})">${RAR[i.rarity]}</span></button>`).join("")}</div></div>
     <p class="note">Les 14 conteneurs extérieurs déjà présents sur la carte constituent une autre couche. Les cargaisons fixes du commissariat et de la banque figurent déjà dans leurs listes d’objets : elles ne sont pas ajoutées une deuxième fois.</p>

@@ -33,13 +33,29 @@ Deux incohérences des références de marqueurs du client ont été prises en c
 
 ## Limites à préserver
 
-- **Un emplacement aléatoire ne garantit ni la présence d’une cargaison, ni son type.** Aucun commerce n’est présenté comme source confirmée de plants ou de réactifs.
+- **Un emplacement aléatoire ne garantit ni la présence d’une cargaison, ni son type.** Les signalements ci-dessous complètent les positions du client, avec leur provenance et leurs limites.
 - La quantité affichée correspond à des **emplacements potentiels**, pas à une quantité de butin présente simultanément.
 - Les huit cargaisons fixes ont un type défini ; elles peuvent déjà avoir été prises dans une session. Leur disponibilité n’a pas été vérifiée en direct.
 - Aucun taux d’apparition, délai de renouvellement ou prix de vente n’est ajouté avec cette couche.
 - Les **14 conteneurs extérieurs** de la source EveryGameStat restent distincts de ces cargaisons en bâtiment.
 - Les trois caisses et cinq sacs figuraient déjà dans les relations d’objets du site. La couche ajoute leurs positions sans doubler leurs quantités.
-- Les plants et réactifs sont consultables/recherchables dans le catalogue, avec leur utilisation et l’indication « lieu d’apparition non déterminé ».
+- Les plants et réactifs sont consultables/recherchables dans le catalogue, avec leur utilisation et les lieux signalés pour leur famille. Un témoignage sur des plantes ne confirme pas toutes leurs raretés ou tous leurs états.
+
+## Types signalés — recherche du 27 novembre 2026
+
+| Lieu | Famille | Précision et preuve |
+| --- | --- | --- |
+| Gunshop East | Plantes uniquement, observé en jeu | Observation du contributeur. [ShowGamer](https://showgamer.com/en/guides/7553-kak-vyrashchivat-rasteniya-v-rob-run-gde-nayti-i-kak-zarabotat-dengi) cite aussi l’armurerie du sud de Downtown pour les plantes ; le guide ne démontre pas leur exclusivité. |
+| Equipment Store East | Plantes | [Témoignage Reddit](https://www.reddit.com/r/robrun/comments/1y4nnqi/comment/19t4ztbjxuctc/?force-legacy-sct=1) : près de la caisse du magasin tactique au sud de Downtown. Le joueur corrige explicitement son identification initiale comme armurerie. |
+| Rusty’s Burgers | Plantes | ShowGamer cite les environs du café. L’emplacement intérieur exact reste inconnu. |
+| Station-service | Réactifs | [Rob Run Helper](https://robrunhelper.tips/) cite le garage et l’arrière-boutique. Itinéraire communautaire que l’auteur indique ne pas avoir encore vérifié en jeu. |
+| Electronics Store East | Réactifs | Le même itinéraire cite l’arrière-boutique du magasin de Downtown au nord de la station-service. Même réserve. |
+
+Ces cinq signalements portent sur des lieux, sans assigner de variante à une entité de placement. Seule l’observation du contributeur à Gunshop East est formulée comme « uniquement », avec sa provenance visible. Les autres familles possibles restent inconnues.
+
+Les guides citent également des pharmacies, bijouteries et hôtels pour les plantes, ainsi que des supérettes et garages de cottages pour les réactifs. Les noms ou localisations insuffisamment précis ne sont pas associés automatiquement à tous les bâtiments de ces catégories.
+
+La poursuite de l’analyse native retrouve `BuildingData.RandomCargos` sous forme de `ReferenceMapData<LocationRandomCargoDescription, RandomCargoData>`. Le modèle lit la cargaison depuis les données répliquées de session. Les placements ne contiennent toujours pas de table de sélection des types ; aucune table exhaustive par commerce n’a été récupérée.
 
 ## Fichiers et vérification
 
