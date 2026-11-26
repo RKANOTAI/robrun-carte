@@ -1342,5 +1342,72 @@ globalThis.CARGO_DATA = {
       ],
       "fixed": []
     }
+  ],
+  "reportsChecked": "27/11/2026",
+  "reportSources": {
+    "player": {
+      "title": "Observation en jeu du contributeur (27/11/2026)"
+    },
+    "showgamer": {
+      "title": "ShowGamer — guide des plantes",
+      "url": "https://showgamer.com/en/guides/7553-kak-vyrashchivat-rasteniya-v-rob-run-gde-nayti-i-kak-zarabotat-dengi"
+    },
+    "reddit": {
+      "title": "Reddit — témoignage de joueur (voir sa correction)",
+      "url": "https://www.reddit.com/r/robrun/comments/1y4nnqi/comment/19t4ztbjxuctc/?force-legacy-sct=1"
+    },
+    "helper": {
+      "title": "Rob Run Helper — itinéraire des réactifs",
+      "url": "https://robrunhelper.tips/"
+    }
+  },
+  "reports": [
+    {
+      "slug": "gun-shop-east",
+      "family": "plants",
+      "observedOnly": true,
+      "detail": "Plantes uniquement selon les visites du contributeur. Le guide cite également l’armurerie du sud de Downtown pour les plantes, sans établir leur exclusivité.",
+      "confidence": "Observation en jeu ; présence corroborée par un guide",
+      "sources": [
+        "player",
+        "showgamer"
+      ]
+    },
+    {
+      "slug": "equipment-store-east",
+      "family": "plants",
+      "detail": "Un joueur signale une plante verte au sol près de la caisse du magasin de matériel tactique au sud de Downtown. Il corrige son message initial qui parlait de l’armurerie.",
+      "confidence": "Témoignage de joueur",
+      "sources": [
+        "reddit"
+      ]
+    },
+    {
+      "slug": "rusty-burgers-cafe",
+      "family": "plants",
+      "detail": "Le guide cite les environs de Rusty’s Burgers pour chercher des plantes. Le point exact et l’intérieur du bâtiment ne sont pas établis.",
+      "confidence": "Signalement dans un guide",
+      "sources": [
+        "showgamer"
+      ]
+    },
+    {
+      "slug": "gas-station",
+      "family": "reagents",
+      "detail": "Bidons signalés dans le garage et l’arrière-boutique. Le guide précise que ses positions et probabilités ne sont pas encore vérifiées en jeu.",
+      "confidence": "Itinéraire communautaire à confirmer",
+      "sources": [
+        "helper"
+      ]
+    },
+    {
+      "slug": "electronics-store-east",
+      "family": "reagents",
+      "detail": "Bidons signalés dans l’arrière-boutique du magasin de Downtown, au nord de la station-service. Le guide précise que ses positions et probabilités ne sont pas encore vérifiées en jeu.",
+      "confidence": "Itinéraire communautaire à confirmer",
+      "sources": [
+        "helper"
+      ]
+    }
   ]
 };

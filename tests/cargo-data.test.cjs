@@ -55,6 +55,29 @@ test('fixed cargo types agree with the existing quantities without duplicating t
   assert.equal(original.map.pins.filter(p => p[0] === 'cargo').length, 14);
 });
 
+test('reported families retain provenance without claiming point-level types or variants', () => {
+  assert.equal(cargo.reports.length, 5);
+  const slugs = new Set(cargo.buildings.map(b => b.slug));
+  for (const report of cargo.reports) {
+    assert.ok(slugs.has(report.slug));
+    assert.ok(['plants','reagents'].includes(report.family));
+    assert.ok(report.detail && report.confidence && report.sources.length);
+    for (const id of report.sources) {
+      const source = cargo.reportSources[id];
+      assert.ok(source.title);
+      if (id !== 'player') assert.match(source.url, /^https:\/\//);
+    }
+    assert.equal(report.item, undefined);
+    assert.equal(report.point, undefined);
+    assert.equal(report.probability, undefined);
+  }
+  const exclusive = cargo.reports.filter(r => r.observedOnly);
+  assert.deepEqual(exclusive.map(r => r.slug), ['gun-shop-east']);
+  assert.ok(exclusive[0].sources.includes('player'));
+  assert.equal(exclusive[0].family, 'plants');
+  assert.match(cargo.reports.find(r => r.slug === 'equipment-store-east').detail, /corrige/);
+});
+
 test('projection keeps cargo on the background and near the associated building', () => {
   const byPlace = Object.fromEntries(original.places.map(p => [p[0],p]));
   for (const b of cargo.buildings) {
